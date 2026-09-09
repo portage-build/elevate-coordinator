@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELEVATE Coordinator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Barlow:wght@300;400;500;600&display=swap">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     FIREBASE SDK  (do not edit)
+═══════════════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+/* ── TOKENS ── */
+:root {
+  --ink:        #1B2535;
+  --paper:      #F4F3EF;
+  --accent:     #3A5F8A;
+  --accent-lt:  #EBF0F7;
+  --muted:      #6E7D8C;
+  --border:     #D6D4CC;
+  --surface:    #ECEAE5;
+  --card:       #FFFFFF;
+  --success:    #346B52;
+  --success-bg: #EAF3EE;
+  --danger:     #943030;
+  --danger-bg:  #F5EAEA;
+  --overlay:    rgba(20,30,46,0.55);
+  --r:          4px;
+  --r-lg:       8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:       #E6E3DC; --paper:     #131C28; --accent:    #618ABF;
+    --accent-lt: #182840; --muted:     #8A99AA; --border:    #263040;
+    --surface:   #182230; --card:      #1C2B3C; --success:   #4D8E6C;
+    --success-bg:#162B22; --danger:    #C45050; --danger-bg: #2A1616;
+    --overlay:   rgba(8,14,24,0.72);
+  }
+}
+:root[data-theme="dark"] {
+  --ink:       #E6E3DC; --paper:     #131C28; --accent:    #618ABF;
+  --accent-lt: #182840; --muted:     #8A99AA; --border:    #263040;
+  --surface:   #182230; --card:      #1C2B3C; --success:   #4D8E6C;
+  --success-bg:#162B22; --danger:    #C45050; --danger-bg: #2A1616;
+  --overlay:   rgba(8,14,24,0.72);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:'Barlow',system-ui,sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── SHELL ── */
+.shell{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:228px;min-height:100vh;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-brand{padding:26px 22px 18px;border-bottom:1px solid rgba(255,255,255,.09)}
+.sb-logo{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.35rem;letter-spacing:.18em;color:#fff;text-transform:uppercase}
+.sb-tag{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:3px}
+.sb-section{padding:14px 0}
+.sb-lbl{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:10px 22px 5px}
+.sb-item{padding:9px 22px;cursor:pointer;border-left:2px solid transparent;transition:background .13s,border-color .13s}
+.sb-item:hover{background:rgba(255,255,255,.06)}
+.sb-item.active{background:rgba(255,255,255,.1);border-left-color:var(--accent)}
+.sb-name{font-size:.85rem;font-weight:500;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-meta{font-size:.68rem;color:rgba(255,255,255,.32);margin-top:2px}
+.sb-foot{padding:14px 22px;border-top:1px solid rgba(255,255,255,.09);margin-top:auto}
+.sb-btn{width:100%;background:var(--accent);color:#fff;border:none;padding:10px 14px;font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:.825rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:var(--r);transition:opacity .14s}
+.sb-btn:hover{opacity:.85}
+
+/* ── MAIN ── */
+.main{flex:1;padding:38px 40px;max-width:820px}
+@media(max-width:600px){.main{padding:24px 18px}}
+
+/* ── PAGE HEADER ── */
+.pg-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+.pg-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:2rem;text-transform:uppercase;letter-spacing:.04em}
+.pg-sub{font-size:.85rem;color:var(--muted);margin-top:5px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:none;border-radius:var(--r);font-family:'Barlow',sans-serif;font-weight:600;font-size:.82rem;cursor:pointer;transition:opacity .14s}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--ink)}
+.btn-del{background:var(--danger-bg);color:var(--danger);border:none;padding:8px 15px;border-radius:var(--r);font-size:.78rem;font-weight:600;cursor:pointer;transition:opacity .14s}
+.btn-del:hover{opacity:.8}
+.btn-copy{background:var(--accent);color:#fff;border:none;padding:8px 15px;border-radius:var(--r);font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .14s}
+.btn-copy:hover{opacity:.85}
+.back-btn{display:inline-flex;align-items:center;gap:5px;background:none;border:none;color:var(--muted);font-size:.82rem;font-weight:500;cursor:pointer;padding:0 0 20px;transition:color .13s}
+.back-btn:hover{color:var(--ink)}
+
+/* ── TILES ── */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:30px}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px}
+.tile-val{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:2.2rem;color:var(--accent);line-height:1}
+.tile-lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+
+/* ── SECTION HEADER ── */
+.sec-hd{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.mt16{margin-top:16px}
+.mt24{margin-top:24px}
+
+/* ── SURVEYS LIST ── */
+.survey-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 22px;margin-bottom:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.survey-card:hover{border-color:var(--accent);box-shadow:0 2px 10px rgba(58,95,138,.12)}
+.sc-group{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:4px}
+.sc-title{font-weight:600;font-size:.95rem}
+.sc-prog{text-align:right;flex-shrink:0}
+.sc-frac{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.4rem;color:var(--ink)}
+.sc-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.empty{font-size:.88rem;color:var(--muted);padding:32px 0;text-align:center}
+
+/* ── TALLY ── */
+.tally-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.tally-lbl{font-size:.83rem;min-width:120px;flex-shrink:0;color:var(--ink)}
+.tally-track{flex:1;background:var(--surface);border-radius:100px;height:7px;overflow:hidden}
+.tally-fill{height:100%;background:var(--accent);border-radius:100px;transition:width .5s ease}
+.tally-n{font-size:.78rem;color:var(--muted);min-width:24px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── RANKING TALLY ── */
+.rtally-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.rtally-pos{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.1rem;color:var(--accent);min-width:26px;text-align:center}
+.rtally-lbl{font-size:.85rem;min-width:110px;flex-shrink:0;color:var(--ink)}
+.rtally-track{flex:1;background:var(--surface);border-radius:100px;height:7px;overflow:hidden}
+.rtally-fill{height:100%;border-radius:100px;transition:width .5s ease}
+.rtally-score{font-size:.75rem;color:var(--muted);min-width:50px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── LINK BOX ── */
+.link-row{display:flex;gap:8px;margin-top:10px}
+.link-val{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:9px 13px;font-size:.8rem;color:var(--muted);word-break:break-all;font-family:monospace}
+
+/* ── RESP ROW ── */
+.resp-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.resp-row:last-child{border-bottom:none}
+.resp-name{font-weight:600;font-size:.9rem}
+.resp-time{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+/* ── ANSWER CARDS ── */
+.ans-card{background:var(--surface);border-radius:var(--r);padding:12px 15px;margin-bottom:8px}
+.ans-who{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.ans-body{font-size:.88rem;line-height:1.5}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:var(--overlay);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--card);border-radius:var(--r-lg);padding:30px 32px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.4rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:22px}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;border-top:1px solid var(--border);padding-top:18px}
+
+/* ── FORM ELEMENTS ── */
+.fgrp{margin-bottom:18px}
+label,.flbl{display:block;font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=number],input[type=password],select,textarea{
+  width:100%;border:1.5px solid var(--border);border-radius:var(--r);
+  background:var(--paper);color:var(--ink);font-family:'Barlow',sans-serif;
+  font-size:.9rem;padding:9px 12px;transition:border-color .13s;outline:none
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:70px}
+.fhint{font-size:.73rem;color:var(--muted);margin-top:5px}
+
+/* ── QUESTION BUILDER ── */
+.q-block{background:var(--surface);border-radius:var(--r);padding:15px 16px;margin-bottom:12px}
+.q-block-head{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.q-block-head input{flex:1}
+.q-block-head select{width:170px;flex-shrink:0}
+.q-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px 6px;border-radius:var(--r);transition:color .13s;align-self:center}
+.q-rm:hover{color:var(--danger)}
+.opts-wrap{margin-top:8px}
+.add-q{background:none;border:1.5px dashed var(--border);color:var(--muted);width:100%;padding:10px;border-radius:var(--r);cursor:pointer;font-size:.82rem;font-weight:500;transition:border-color .13s,color .13s}
+.add-q:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── PIN GATE ── */
+.pin-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--paper)}
+.pin-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);padding:40px 36px;width:100%;max-width:360px;text-align:center}
+.pin-logo{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.6rem;letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px}
+.pin-sub{font-size:.78rem;color:var(--muted);margin-bottom:28px}
+.pin-err{background:var(--danger-bg);color:var(--danger);font-size:.8rem;border-radius:var(--r);padding:9px 12px;margin-top:10px}
+
+/* ── PARTICIPANT ── */
+.participant-shell{min-height:100vh;background:var(--paper);display:flex;flex-direction:column}
+.p-header{background:var(--ink);padding:18px 24px;display:flex;align-items:center;gap:14px}
+.p-logo{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:.18em;color:#fff;text-transform:uppercase}
+.p-group{font-size:.72rem;color:rgba(255,255,255,.45);margin-top:2px}
+.p-body{flex:1;padding:32px 24px;max-width:540px;margin:0 auto;width:100%}
+.p-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.6rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.p-desc{font-size:.88rem;color:var(--muted);margin-bottom:24px;line-height:1.5}
+.q-text{font-weight:600;font-size:.95rem;margin-bottom:10px;line-height:1.4}
+.q-note{font-size:.78rem;color:var(--muted);margin-bottom:10px}
+
+/* ── CHIPS ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 15px;border:1.5px solid var(--border);border-radius:100px;font-size:.85rem;font-weight:500;cursor:pointer;transition:background .13s,border-color .13s,color .13s;user-select:none;background:var(--card);color:var(--ink)}
+.chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* ── RANKING ── */
+.rank-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.rank-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:10px 13px;transition:background .12s,border-color .12s;user-select:none}
+.rank-item.rank-top{border-color:var(--accent);background:var(--accent-lt)}
+.rank-num{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;color:var(--accent);min-width:22px;text-align:center;line-height:1}
+.rank-label{flex:1;font-size:.88rem;font-weight:500;color:var(--ink)}
+.rank-btns{display:flex;flex-direction:column;gap:2px}
+.rank-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);cursor:pointer;width:28px;height:24px;border-radius:3px;font-size:.7rem;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s,border-color .12s}
+.rank-btn:hover:not(:disabled){background:var(--accent-lt);color:var(--accent);border-color:var(--accent)}
+.rank-btn:disabled{opacity:.2;cursor:default}
+
+/* ── PROGRESS BAR ── */
+.prog-bar{background:var(--surface);border-radius:100px;height:5px;overflow:hidden;margin-bottom:28px}
+.prog-fill{height:100%;background:var(--accent);border-radius:100px;transition:width .4s ease}
+
+/* ── SUCCESS ── */
+.success-wrap{text-align:center;padding:48px 24px}
+.success-icon{font-size:3rem;margin-bottom:16px}
+.success-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.8rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.success-sub{font-size:.9rem;color:var(--muted);line-height:1.6}
+.counter-badge{display:inline-block;background:var(--accent-lt);color:var(--accent);border:1.5px solid var(--accent);border-radius:100px;padding:6px 18px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.1rem;margin-top:16px}
+
+/* ── SUBMIT BUTTON ── */
+.submit-btn{width:100%;background:var(--accent);color:#fff;border:none;padding:14px;border-radius:var(--r);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1.05rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:opacity .14s;margin-top:8px}
+.submit-btn:hover{opacity:.88}
+.submit-btn:disabled{opacity:.45;cursor:default}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATION — FILL THIS IN BEFORE DEPLOYING
+// Get these values from: Firebase Console → Project Settings → Your Apps
+// ═══════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBBOv7Ux1_wKK4uxgnEE34DEkr79AxU-_I",
+  authDomain:        "elevate-coordinator.firebaseapp.com",
+  projectId:         "elevate-coordinator",
+  storageBucket:     "elevate-coordinator.firebasestorage.app",
+  messagingSenderId: "886346125649",
+  appId:             "1:886346125649:web:c4e249699e939ecfe28370"
+};
+// ═══════════════════════════════════════════════════════════════
+
+// ── FIREBASE INIT ─────────────────────────────────────────────
+let DB;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  DB = firebase.firestore();
+} catch(e) {
+  document.getElementById('app').innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px;text-align:center">
+      <div>
+        <div style="font-size:1.4rem;font-weight:700;margin-bottom:12px">Firebase not configured</div>
+        <div style="color:#6E7D8C;font-size:.9rem;max-width:400px">
+          Open the HTML file and fill in your Firebase project credentials in the FIREBASE_CONFIG block at the top of the script.
+          <br><br>See the setup guide for instructions.
+        </div>
+      </div>
+    </div>`;
+  throw e;
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2) }
+function fmtTs(ts){
+  if(!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · ' +
+         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
+// ── STATE ─────────────────────────────────────────────────────
+let adminPin = null;
+let selectedId = null;
+let respUnsub = null;
+let surveyUnsub = null;
+window._ans = {};
+
+// ── ROUTER ────────────────────────────────────────────────────
+function init(){
+  const params = new URLSearchParams(location.search);
+  const surveyId = params.get('s');
+  if (surveyId) {
+    showParticipant(surveyId);
+  } else {
+    showPinGate();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// PIN GATE
+// ══════════════════════════════════════════════════════════════
+function showPinGate(){
+  document.getElementById('app').innerHTML = `
+    <div class="pin-wrap">
+      <div class="pin-card">
+        <div class="pin-logo">ELEV▲TE</div>
+        <div class="pin-sub">Coordinator · Admin Access</div>
+        <div class="fgrp">
+          <label>Admin PIN</label>
+          <input type="password" id="pin-input" placeholder="Enter PIN" onkeydown="if(event.key==='Enter')verifyPin()">
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="verifyPin()">Enter</button>
+        <div id="pin-msg"></div>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('pin-input')?.focus(), 50);
+}
+
+async function verifyPin(){
+  const entered = document.getElementById('pin-input')?.value?.trim();
+  if (!entered) return;
+  const msg = document.getElementById('pin-msg');
+  msg.innerHTML = `<div style="color:var(--muted);font-size:.8rem;margin-top:10px">Checking…</div>`;
+  try {
+    const snap = await DB.doc('config/settings').get();
+    if (!snap.exists || !snap.data().pin) {
+      // First-time setup — set the PIN
+      await DB.doc('config/settings').set({ pin: entered });
+      adminPin = entered;
+      showAdmin();
+    } else if (snap.data().pin === entered) {
+      adminPin = entered;
+      showAdmin();
+    } else {
+      msg.innerHTML = `<div class="pin-err">Incorrect PIN. Try again.</div>`;
+    }
+  } catch(e) {
+    msg.innerHTML = `<div class="pin-err">Connection error. Check your Firebase config.</div>`;
+    console.error(e);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADMIN SHELL
+// ══════════════════════════════════════════════════════════════
+function showAdmin(){
+  document.getElementById('app').innerHTML = `
+    <div class="shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="sb-brand">
+          <div class="sb-logo">ELEV▲TE</div>
+          <div class="sb-tag">Group Coordinator</div>
+        </div>
+        <div class="sb-section" id="sb-surveys"><div class="sb-lbl">Surveys</div></div>
+        <div class="sb-foot">
+          <button class="sb-btn" onclick="openCreateModal()">+ New Survey</button>
+        </div>
+      </aside>
+      <main class="main" id="main">
+        <div class="empty" style="margin-top:80px">Select a survey or create a new one.</div>
+      </main>
+    </div>`;
+
+  if (surveyUnsub) { surveyUnsub(); surveyUnsub = null; }
+  surveyUnsub = DB.collection('surveys').orderBy('createdAt','desc').onSnapshot(snap => {
+    const surveys = snap.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()}));
+    renderSidebar(surveys);
+    if (selectedId) {
+      const s = surveys.find(x=>x.id===selectedId);
+      if (s) renderDetail(s, null); // responses re-loaded by their own listener
+    } else if (!document.querySelector('.survey-card')) {
+      showDashboard(surveys);
+    }
+  });
+}
+
+function renderSidebar(surveys){
+  const sb = document.getElementById('sb-surveys');
+  if (!sb) return;
+  sb.innerHTML = `<div class="sb-lbl">Surveys</div>`;
+  if (!surveys.length) {
+    sb.innerHTML += `<div style="padding:10px 22px;font-size:.78rem;color:rgba(255,255,255,.28)">No surveys yet</div>`;
+    return;
+  }
+  surveys.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'sb-item' + (s.id===selectedId?' active':'');
+    div.setAttribute('data-id', s.id);
+    div.innerHTML = `
+      <div class="sb-name">${esc(s.title)}</div>
+      <div class="sb-meta">${esc(s.groupName)} · ${s.responseCount||0}/${s.expectedCount||0}</div>`;
+    div.onclick = () => pickSurvey(s.id);
+    sb.appendChild(div);
+  });
+}
+
+function showDashboard(surveys){
+  const main = document.getElementById('main');
+  if (!main) return;
+  selectedId = null;
+  const total = surveys?.length || 0;
+  const totalResp = surveys?.reduce((a,s)=>a+(s.responseCount||0),0)||0;
+  main.innerHTML = `
+    <div class="pg-head">
+      <div>
+        <div class="pg-title">Dashboard</div>
+        <div class="pg-sub">All active surveys at a glance</div>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ New Survey</button>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="tile-val">${total}</div><div class="tile-lbl">Surveys</div></div>
+      <div class="tile"><div class="tile-val">${totalResp}</div><div class="tile-lbl">Total Responses</div></div>
+      <div class="tile"><div class="tile-val">${total?Math.round(totalResp/total*10)/10:0}</div><div class="tile-lbl">Avg / Survey</div></div>
+    </div>
+    <div class="sec-hd">All Surveys</div>
+    ${!surveys?.length
+      ? `<div class="empty">No surveys yet — click "+ New Survey" to get started.</div>`
+      : surveys.map(s => {
+          const done = s.responseCount||0, tot = s.expectedCount||0;
+          return `<div class="survey-card" onclick="pickSurvey('${s.id}')">
+            <div>
+              <div class="sc-group">${esc(s.groupName)}</div>
+              <div class="sc-title">${esc(s.title)}</div>
+            </div>
+            <div class="sc-prog">
+              <div class="sc-frac">${done}<span style="font-weight:300;color:var(--muted)">/${tot}</span></div>
+              <div class="sc-label">responded</div>
+            </div>
+          </div>`;
+        }).join('')}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SURVEY DETAIL
+// ══════════════════════════════════════════════════════════════
+function pickSurvey(id){
+  selectedId = id;
+  document.querySelectorAll('.sb-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+  if (respUnsub) { respUnsub(); respUnsub = null; }
+  let survey = null;
+  DB.doc(`surveys/${id}`).get().then(snap => {
+    if (!snap.exists) return;
+    survey = {id:snap.id,...snap.data()};
+    respUnsub = DB.collection(`surveys/${id}/responses`)
+      .orderBy('submittedAt','asc')
+      .onSnapshot(snap2 => {
+        const responses = snap2.docs.filter(d=>d.exists).map(d=>({id:d.id,...d.data()}));
+        DB.doc(`surveys/${id}`).update({responseCount:responses.length}).catch(()=>{});
+        renderDetail(survey, responses);
+      });
+  });
+}
+
+function renderDetail(survey, responses){
+  const main = document.getElementById('main');
+  if (!main) return;
+  const shareUrl = `${location.origin}${location.pathname}?s=${survey.id}`;
+  const questions = survey.questions || [];
+  const done = responses ? responses.length : (survey.responseCount||0);
+  const tot = survey.expectedCount || 0;
+  const pct = tot > 0 ? Math.round((done/tot)*100) : 0;
+
+  const tallies = questions.map(q => {
+    if (q.type === 'text') return null;
+    if (q.type === 'ranking') {
+      const rankSum = {}, rankCount = {};
+      (q.options||[]).forEach(o => { rankSum[o.id]=0; rankCount[o.id]=0; });
+      (responses||[]).forEach(r => {
+        const ans = r.answers?.[q.id];
+        if (Array.isArray(ans)) {
+          ans.forEach((oid,i) => { if(oid in rankSum){rankSum[oid]+=(i+1);rankCount[oid]++;} });
+        }
+      });
+      return {q, rankSum, rankCount, isRanking:true};
+    }
+    const counts = {};
+    (q.options||[]).forEach(o => counts[o.id]=0);
+    (responses||[]).forEach(r => {
+      const ans = Array.isArray(r.answers?.[q.id]) ? r.answers[q.id] : [];
+      ans.forEach(a => { if (a in counts) counts[a]++; });
+    });
+    return {q, counts};
+  });
+
+  main.innerHTML = `
+    <button class="back-btn" onclick="showDashboard()">← All Surveys</button>
+    <div class="pg-head">
+      <div>
+        <div style="font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:4px">${esc(survey.groupName)}</div>
+        <div class="pg-title">${esc(survey.title)}</div>
+      </div>
+      <button class="btn-del" onclick="deleteSurvey('${survey.id}')">Delete Survey</button>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><div class="tile-val">${done}</div><div class="tile-lbl">Responded</div></div>
+      <div class="tile"><div class="tile-val">${tot}</div><div class="tile-lbl">Expected</div></div>
+      <div class="tile"><div class="tile-val">${pct}%</div><div class="tile-lbl">Complete</div></div>
+    </div>
+
+    <div class="sec-hd">Participant Link</div>
+    <div class="link-row">
+      <div class="link-val">${shareUrl}</div>
+      <button class="btn-copy" id="copy-btn" onclick="copyLink('${shareUrl}')">Copy</button>
+    </div>
+    <p style="font-size:.73rem;color:var(--muted);margin-top:8px">Text this link to all ${tot} members of ${esc(survey.groupName)}. No login required.</p>
+
+    ${tallies.some(Boolean) ? `
+    <div class="mt24">
+      <div class="sec-hd">Response Tally</div>
+      ${tallies.filter(Boolean).map(t => {
+        if (t.isRanking) {
+          const opts = (t.q.options||[]).map(o => {
+            const cnt = t.rankCount[o.id]||0;
+            const avg = cnt > 0 ? t.rankSum[o.id]/cnt : 999;
+            return {o, avg, cnt};
+          }).sort((a,b) => a.avg - b.avg);
+          const bestAvg = opts[0]?.avg||1;
+          const worstAvg = opts[opts.length-1]?.avg||opts.length;
+          return `<div style="margin-bottom:20px">
+            <div style="font-size:.88rem;font-weight:600;color:var(--ink);margin-bottom:6px">${esc(t.q.text)}</div>
+            <div style="font-size:.73rem;color:var(--muted);margin-bottom:10px">Ranked by group preference — #1 is most preferred</div>
+            ${opts.map((item,pos) => {
+              const fillPct = item.cnt===0 ? 0 : Math.round(((worstAvg - item.avg) / Math.max(worstAvg - bestAvg, 0.01)) * 80 + 20);
+              return `<div class="rtally-row">
+                <div class="rtally-pos">${pos+1}</div>
+                <div class="rtally-lbl">${esc(item.o.label)}</div>
+                <div class="rtally-track"><div class="rtally-fill" style="width:${fillPct}%;background:var(--accent)"></div></div>
+                <div class="rtally-score">${item.cnt>0 ? 'avg. '+item.avg.toFixed(1) : '—'}</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }
+        return `<div style="margin-bottom:20px">
+          <div style="font-size:.88rem;font-weight:600;color:var(--ink);margin-bottom:8px">${esc(t.q.text)}</div>
+          ${(t.q.options||[]).map(opt => {
+            const n = t.counts[opt.id]||0;
+            const w = done>0 ? Math.round((n/done)*100) : 0;
+            return `<div class="tally-row">
+              <div class="tally-lbl">${esc(opt.label)}</div>
+              <div class="tally-track"><div class="tally-fill" style="width:${w}%"></div></div>
+              <div class="tally-n">${n}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    ${questions.filter(q=>q.type==='text').length && responses?.length ? `
+    <div class="mt16">
+      <div class="sec-hd">Written Responses</div>
+      ${questions.filter(q=>q.type==='text').map(q => `
+        <div style="margin-bottom:18px">
+          <div style="font-size:.88rem;font-weight:600;margin-bottom:8px">${esc(q.text)}</div>
+          ${(responses||[]).filter(r=>r.answers?.[q.id]).map(r => `
+            <div class="ans-card">
+              <div class="ans-who">${esc(r.participantName)}</div>
+              <div class="ans-body">${esc(r.answers[q.id])}</div>
+            </div>`).join('')}
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="mt16">
+      <div class="sec-hd">All Responses (${done})</div>
+      ${!done ? `<div class="empty" style="padding:20px">No responses yet — share the link above.</div>` :
+        (responses||[]).map((r,i) => `
+          <div class="resp-row">
+            <div>
+              <div class="resp-name">${esc(r.participantName)}</div>
+              <div class="resp-time">${fmtTs(r.submittedAt)}</div>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted)">Response #${i+1}</div>
+          </div>`).join('')}
+    </div>`;
+}
+
+// ── DELETE ────────────────────────────────────────────────────
+async function deleteSurvey(id){
+  if (!confirm('Delete this survey and all responses? This cannot be undone.')) return;
+  const snap = await DB.collection(`surveys/${id}/responses`).get();
+  for (const d of snap.docs) await DB.doc(`surveys/${id}/responses/${d.id}`).delete().catch(()=>{});
+  await DB.doc(`surveys/${id}`).delete();
+  selectedId = null;
+  if (respUnsub) { respUnsub(); respUnsub = null; }
+  showDashboard([]);
+}
+
+// ── COPY LINK ─────────────────────────────────────────────────
+function copyLink(url){
+  navigator.clipboard.writeText(url).catch(()=>{});
+  const btn = document.getElementById('copy-btn');
+  if (btn) { btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',2000); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CREATE SURVEY MODAL
+// ══════════════════════════════════════════════════════════════
+function openCreateModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'create-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">New Survey</div>
+      <div class="fgrp">
+        <label>Group Name</label>
+        <input type="text" id="m-group" placeholder="e.g. Cohort A">
+      </div>
+      <div class="fgrp">
+        <label>Survey Title</label>
+        <input type="text" id="m-title" placeholder="e.g. June Retreat Preferences">
+      </div>
+      <div class="fgrp">
+        <label>Expected Respondents</label>
+        <input type="number" id="m-count" min="1" value="8">
+      </div>
+
+      <div style="font-size:.78rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Questions</div>
+      <div id="q-list"></div>
+      <button class="add-q" onclick="addQRow()">+ Add Question</button>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreate()">Create Survey</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  addQRow();
+}
+
+function closeModal(){
+  document.getElementById('create-overlay')?.remove();
+}
+
+let qCount = 0;
+function addQRow(){
+  qCount++;
+  const id = 'q'+qCount;
+  const list = document.getElementById('q-list');
+  const block = document.createElement('div');
+  block.className = 'q-block';
+  block.dataset.qid = id;
+  block.innerHTML = `
+    <div class="q-block-head">
+      <input type="text" placeholder="Question text" id="qt-${id}">
+      <select id="qs-${id}" onchange="toggleOpts(this)">
+        <option value="single">Single choice</option>
+        <option value="multi">Multi-select</option>
+        <option value="ranking">Ranking</option>
+        <option value="text">Free text</option>
+      </select>
+      <button class="q-rm" onclick="this.closest('.q-block').remove()" title="Remove">×</button>
+    </div>
+    <div class="opts-wrap" id="opts-${id}">
+      <textarea id="qo-${id}" placeholder="One option per line" rows="3"></textarea>
+      <div class="fhint" id="hint-${id}">Each line becomes a selectable option.</div>
+    </div>`;
+  list.appendChild(block);
+}
+
+function toggleOpts(sel){
+  const wrap = sel.closest('.q-block').querySelector('.opts-wrap');
+  const isText = sel.value === 'text';
+  wrap.style.display = isText ? 'none' : 'block';
+  const hint = wrap.querySelector('.fhint');
+  if (hint) hint.textContent = sel.value === 'ranking'
+    ? 'Each line is a city/option participants will rank by preference.'
+    : 'Each line becomes a selectable option.';
+}
+
+async function submitCreate(){
+  const groupName = document.getElementById('m-group')?.value?.trim();
+  const title     = document.getElementById('m-title')?.value?.trim();
+  const count     = parseInt(document.getElementById('m-count')?.value)||0;
+  if (!groupName || !title) { alert('Please fill in group name and survey title.'); return; }
+
+  const questions = [];
+  document.querySelectorAll('#q-list .q-block').forEach(block => {
+    const qid  = block.dataset.qid;
+    const text = document.getElementById(`qt-${qid}`)?.value?.trim();
+    const type = document.getElementById(`qs-${qid}`)?.value;
+    if (!text) return;
+    const q = {id: uid(), text, type};
+    if (type !== 'text') {
+      const raw = document.getElementById(`qo-${qid}`)?.value || '';
+      q.options = raw.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>({id:uid(),label:l}));
+    }
+    questions.push(q);
+  });
+  if (!questions.length) { alert('Add at least one question.'); return; }
+
+  const id = uid();
+  await DB.doc(`surveys/${id}`).set({
+    id, groupName, title, expectedCount: count, questions,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    responseCount: 0, active: true
+  });
+  closeModal();
+  pickSurvey(id);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PARTICIPANT FLOW
+// ══════════════════════════════════════════════════════════════
+async function showParticipant(surveyId){
+  const app = document.getElementById('app');
+  app.innerHTML = `<div class="participant-shell"><div class="p-header"><div class="p-logo">ELEV▲TE</div></div><div class="p-body"><div class="empty">Loading…</div></div></div>`;
+
+  const snap = await DB.doc(`surveys/${surveyId}`).get();
+  if (!snap.exists) {
+    app.innerHTML = `<div class="participant-shell"><div class="p-header"><div class="p-logo">ELEV▲TE</div></div><div class="p-body"><div class="empty" style="margin-top:60px">Survey not found or has been closed.</div></div></div>`;
+    return;
+  }
+  const survey = {id:snap.id,...snap.data()};
+  showNameStep(survey);
+}
+
+function showNameStep(survey){
+  document.querySelector('.p-body').innerHTML = `
+    <div class="p-title">${esc(survey.title)}</div>
+    <div class="p-desc">From ${esc(survey.groupName)} — ${survey.expectedCount||''} participants expected</div>
+    <div class="fgrp">
+      <label>Your First Name</label>
+      <input type="text" id="p-name" placeholder="e.g. Jordan" autocomplete="given-name"
+        onkeydown="if(event.key==='Enter')startQuestions()">
+    </div>
+    <button class="submit-btn" onclick="startQuestions()">Continue →</button>`;
+  setTimeout(()=>document.getElementById('p-name')?.focus(),50);
+  window._currentSurvey = survey;
+}
+
+function startQuestions(){
+  const name = document.getElementById('p-name')?.value?.trim();
+  if (!name) { document.getElementById('p-name')?.focus(); return; }
+  window._participantName = name;
+  showQStep(window._currentSurvey, 0);
+}
+
+function showQStep(survey, qIdx){
+  const questions = survey.questions || [];
+  const q = questions[qIdx];
+  if (!q) { submitResponse(survey); return; }
+
+  // Init answer state
+  if (q.type === 'ranking') {
+    window._ans[q.id] = (q.options||[]).map(o=>o.id);
+  } else if (q.type !== 'text') {
+    if (window._ans[q.id] === undefined) window._ans[q.id] = [];
+  }
+
+  const pct = Math.round((qIdx / questions.length) * 100);
+  let qHtml = '';
+
+  if (q.type === 'text') {
+    qHtml = `<div class="fgrp">
+      <div class="q-text">${esc(q.text)}</div>
+      <textarea id="ans-text" rows="4" placeholder="Your answer…"
+        oninput="window._ans['${q.id}']=this.value"></textarea>
+    </div>`;
+  } else if (q.type === 'ranking') {
+    qHtml = `<div class="fgrp">
+      <div class="q-text">${esc(q.text)}</div>
+      <div class="q-note">Use the arrows to rank from most to least preferred. #1 is your top choice.</div>
+      <ul class="rank-list" id="rl-${q.id}">
+        ${(q.options||[]).map((o,ri) => `
+          <li class="rank-item${ri===0?' rank-top':''}" data-oid="${o.id}">
+            <span class="rank-num">${ri+1}</span>
+            <span class="rank-label">${esc(o.label)}</span>
+            <div class="rank-btns">
+              <button class="rank-btn" onclick="moveRank('${q.id}','${o.id}',-1)"
+                ${ri===0?'disabled':''} title="Move up">▲</button>
+              <button class="rank-btn" onclick="moveRank('${q.id}','${o.id}',1)"
+                ${ri===(q.options.length-1)?'disabled':''} title="Move down">▼</button>
+            </div>
+          </li>`).join('')}
+      </ul>
+    </div>`;
+  } else {
+    const isSingle = q.type === 'single';
+    qHtml = `<div class="fgrp">
+      <div class="q-text">${esc(q.text)}</div>
+      ${isSingle ? '' : '<div class="q-note">Select all that apply.</div>'}
+      <div class="chips">
+        ${(q.options||[]).map(o => `
+          <div class="chip" onclick="toggleChip(this,'${q.id}','${o.id}','${q.type}')">${esc(o.label)}</div>
+        `).join('')}
+      </div>
+    </div>`;
+  }
+
+  const isLast = qIdx === questions.length - 1;
+  document.querySelector('.p-body').innerHTML = `
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:.7rem;color:var(--muted);margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em">Question ${qIdx+1} of ${questions.length}</div>
+    ${qHtml}
+    <button class="submit-btn" onclick="advanceQ(${qIdx})" style="margin-top:16px">
+      ${isLast ? 'Submit →' : 'Next →'}
+    </button>`;
+
+  window._currentSurvey = survey;
+  window._currentQIdx = qIdx;
+}
+
+function advanceQ(qIdx){
+  const survey = window._currentSurvey;
+  const q = survey.questions[qIdx];
+  // Validate
+  if (q.type !== 'text' && q.type !== 'ranking') {
+    const ans = window._ans[q.id];
+    if (!ans || ans.length === 0) {
+      alert('Please select an option before continuing.');
+      return;
+    }
+  }
+  showQStep(survey, qIdx + 1);
+}
+
+function toggleChip(el, qid, oid, type){
+  const curAns = window._ans[qid] || [];
+  if (type === 'single') {
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+    window._ans[qid] = [oid];
+  } else {
+    el.classList.toggle('selected');
+    if (el.classList.contains('selected')) {
+      if (!curAns.includes(oid)) window._ans[qid] = [...curAns, oid];
+    } else {
+      window._ans[qid] = curAns.filter(x=>x!==oid);
+    }
+  }
+}
+
+function moveRank(qid, oid, dir){
+  const list = document.getElementById(`rl-${qid}`);
+  if (!list) return;
+  const items = [...list.querySelectorAll('.rank-item')];
+  const idx = items.findIndex(el => el.dataset.oid === oid);
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= items.length) return;
+  if (dir === -1) list.insertBefore(items[idx], items[newIdx]);
+  else list.insertBefore(items[newIdx], items[idx]);
+  const updated = [...list.querySelectorAll('.rank-item')];
+  updated.forEach((el,i) => {
+    el.querySelector('.rank-num').textContent = i+1;
+    el.classList.toggle('rank-top', i===0);
+    const [upBtn,dnBtn] = el.querySelectorAll('.rank-btn');
+    upBtn.disabled = i===0;
+    dnBtn.disabled = i===updated.length-1;
+  });
+  window._ans[qid] = updated.map(el => el.dataset.oid);
+}
+
+async function submitResponse(survey){
+  const body = document.querySelector('.p-body');
+  body.innerHTML = `<div class="empty" style="margin-top:60px">Submitting…</div>`;
+  const respId = uid();
+  await DB.doc(`surveys/${survey.id}/responses/${respId}`).set({
+    participantName: window._participantName,
+    answers: window._ans,
+    submittedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    surveyId: survey.id
+  });
+  // Get updated count
+  const countSnap = await DB.collection(`surveys/${survey.id}/responses`).get();
+  const total = countSnap.size;
+  const expected = survey.expectedCount || 0;
+  showSuccess(total, expected, survey.groupName);
+}
+
+function showSuccess(count, expected, groupName){
+  document.querySelector('.p-body').innerHTML = `
+    <div class="success-wrap">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Response Received</div>
+      <div class="success-sub">
+        Thanks for completing the survey for ${esc(groupName)}.<br>
+        Your answers have been saved.
+      </div>
+      <div class="counter-badge">
+        ${count} of ${expected} responded
+      </div>
+    </div>`;
+  window._ans = {};
+}
+
+// ── EXPOSE ────────────────────────────────────────────────────
+Object.assign(window, {
+  showDashboard, pickSurvey, deleteSurvey, copyLink,
+  openCreateModal, closeModal, addQRow, toggleOpts, submitCreate,
+  toggleChip, moveRank, verifyPin, startQuestions, advanceQ
+});
+
+init();
+</script>
+</body>
+</html>
